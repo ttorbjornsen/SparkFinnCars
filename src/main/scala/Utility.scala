@@ -69,18 +69,6 @@ object Utility {
 
   }
 
-//  def createAcqCarHeaderObject(i:Int, jsonCarHdr:JsValue) = {
-//    val location = jsonCarHdr.\\("group")(0)(i).\("location")(0).\("text").asOpt[String].getOrElse(Utility.Constants.EmptyString)
-//    val url = jsonCarHdr.\\("group")(0)(i).\("title")(0).\("href").asOpt[String].getOrElse(Utility.Constants.EmptyString)
-//    val title = jsonCarHdr.\\("group")(0)(i).\("title")(0).\("text").asOpt[String].getOrElse(Utility.Constants.EmptyString)
-//    val year = jsonCarHdr.\\("group")(0)(i).\("year")(0).\("text").asOpt[String].getOrElse(Utility.Constants.EmptyString)
-//    val km = jsonCarHdr.\\("group")(0)(i).\("km")(0).\("text").asOpt[String].getOrElse(Utility.Constants.EmptyString)
-//    val price = jsonCarHdr.\\("group")(0)(i).\("price")(0).\("text").asOpt[String].getOrElse(Utility.Constants.EmptyString)
-//    val load_time = jsonCarHdr.\\("timestamp")(0).as[Long]
-//    val load_date = new java.util.Date(load_time).toInstant().atZone(ZoneId.systemDefault()).toLocalDate().toString
-//    AcqCarHeader(title=title, url=url, location=location, year=year, km=km, price=price, load_time=load_time, load_date=load_date)
-//  }
-
   def getURL(url: String)(retry: Int): Try[Document] = {
     Try(Jsoup.connect(url).get)
       .recoverWith {

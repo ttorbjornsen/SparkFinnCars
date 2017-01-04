@@ -32,38 +32,34 @@ object StreamFromKafka extends App {
         val content = rdd.map(_._2)
 
         content.foreach { jsonDoc =>
-          println("JSONDOC")
-          println(jsonDoc)
+//          println("JSONDOC")
+//          println(jsonDoc)
           val jsonCarHdr: JsValue = Json.parse(jsonDoc.mkString)
-          val acqCarHdr = Utility.createAcqCarHeaderObjects(jsonCarHdr)
-          val carHdrDF = sqlCtx.createDataFrame(acqCarHdr)
+          val acqCarHdrList = Utility.createAcqCarHeaderObjects(jsonCarHdr)
+          val carHdrDF = sqlCtx.createDataFrame(acqCarHdrList)
 
           carHdrDF.write.
           format("org.apache.spark.sql.cassandra").
           options(Map("table" -> "acq_car_h", "keyspace" -> "finncars")).
+          mode(SaveMode.Append).
           save
 
-          println("JSONCARHDR")
+          //val acqCarHdrList = List(
+          val acqCarHdrUrlList = acqCarHdrList.map(_.finnkode)
 
-//          val headerUrl = jsonCarHdr.\\("url").head.as[String]
-//          val numOfCars = jsonCarHdr.\\("group")(0).as[JsArray].value.size
-//          val acqCarHeaderList = Range(0, numOfCars).map(i =>
-//            Utility.createAcqCarHeaderObject(i, jsonCarHdr)).toList
-//        }
-//
-//        val df = sqlCtx
-//          .read
-//          .format("org.apache.spark.sql.cassandra")
-//          .options(Map( "table" -> "keyspaces", "keyspace" -> "system_schema" ))
-//          .load()
-//
-//        df.show()
+          for (acqCarHdr <- acqCarHdrList){
 
+            }
 
-        //val content = rdd.map(_._2).collect
+//          sqlCtx.read.
+//            format("org.apache.spark.sql.cassandra").
+//            options(Map("table" -> "acq_car_h", "keyspace" -> "finncars")).
+//            load().show
 
         }
       }})
+
+
 
   ssc.start()
   //ssc.stop(false) //for debugging in REPL
