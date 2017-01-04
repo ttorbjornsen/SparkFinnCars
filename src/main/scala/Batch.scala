@@ -11,6 +11,13 @@ object Batch {
   sc.setLogLevel("WARN")
   val sqlCtx = new SQLContext(sc)
 
+  //find latest finnkodes loaded (and therefore needs to be updated) (use scraping log table). Add safety margin (e.g. handle deleted cars)
+  //for every finnkode
+  //  - get header
+  //  - get details
+  //
+  // create one record in propcar for every date in scrape log (method invoked should filter on date, not the cassandra query)
+
   val acqCarHdrDF = sqlCtx.read.
     format("org.apache.spark.sql.cassandra").
     options(Map("table" -> "acq_car_h", "keyspace" -> "finncars")).
@@ -20,6 +27,8 @@ object Batch {
     format("org.apache.spark.sql.cassandra").
     options(Map("table" -> "acq_car_d", "keyspace" -> "finncars")).
     load()
+
+
 
 
 

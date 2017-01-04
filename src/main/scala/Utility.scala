@@ -1,5 +1,6 @@
 package ttorbjornsen.finncars
 import java.lang.IndexOutOfBoundsException
+import java.text.SimpleDateFormat
 
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.SparkConf
@@ -64,7 +65,8 @@ object Utility {
         val price = jsonCarHdr(i).\("price").asOpt[String].getOrElse(Utility.Constants.EmptyString)
         val url = generateFinnCarUrl(finnkode)
         val load_time = System.currentTimeMillis()
-        val load_date = new java.util.Date(load_time).toInstant().atZone(ZoneId.systemDefault()).toLocalDate().toString
+        //val load_date = new java.util.Date(load_time).toInstant().atZone(ZoneId.systemDefault()).toLocalDate().toString
+        val load_date = new java.sql.Date(load_time)
         AcqCarHeader(finnkode=finnkode, location=location, title = title, year=year, km=km, price=price, load_time=load_time, load_date=load_date, url=url)
       }
       acqCarHeaderList.toList
@@ -431,6 +433,7 @@ object Utility {
     val EmptyString = "NULL"
     val EmptyInt = -1
     val EmptyDate = "1900-01-01"
+    val EmptyUtilDate = new java.sql.Date(1900,1,1)
     val ETLSafetyMargin = 7 //days
     val ETLFirstLoadDate = LocalDate.of(2016,7,1)
   }

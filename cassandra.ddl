@@ -1,17 +1,17 @@
 DROP TABLE finncars.acq_car_h;
 
 CREATE TABLE finncars.acq_car_h (
-    load_date text,
     finnkode int,
-    load_time timestamp,
+    load_date timestamp,
     km text,
     location text,
     price text,
     title text,
     year text,
     url text,
-    PRIMARY KEY (finnkode, load_time)
-) WITH CLUSTERING ORDER BY (load_time DESC)
+    load_time timestamp,
+    PRIMARY KEY (finnkode, load_date)
+) WITH CLUSTERING ORDER BY (load_date DESC)
     AND bloom_filter_fp_chance = 0.01
     AND caching = {'keys':'ALL', 'rows_per_partition':'NONE'}
     AND comment = ''
@@ -30,16 +30,16 @@ CREATE TABLE finncars.acq_car_h (
 DROP TABLE finncars.acq_car_d;
 
 CREATE TABLE finncars.acq_car_d (
-    load_date text,
     finnkode int,
-    load_time timestamp,
+    load_date timestamp,
     deleted boolean,
     equipment text,
     information text,
     properties text,
     url text,
-    PRIMARY KEY (finnkode, load_time)
-) WITH CLUSTERING ORDER BY (load_time DESC)
+    load_time timestamp,
+    PRIMARY KEY (finnkode, load_date)
+) WITH CLUSTERING ORDER BY (load_date DESC)
     AND bloom_filter_fp_chance = 0.01
     AND caching = {'keys':'ALL', 'rows_per_partition':'NONE'}
     AND comment = ''
@@ -57,13 +57,12 @@ CREATE TABLE finncars.acq_car_d (
 DROP TABLE finncars.prop_car_daily;
 
 CREATE TABLE finncars.prop_car_daily (
-    load_date text,
     finnkode int,
+    load_date timestamp,
     deleted boolean,
     equipment set<text>,
     information text,
     km int,
-    load_time timestamp,
     location text,
     price int,
     properties map<text, text>,
@@ -71,8 +70,9 @@ CREATE TABLE finncars.prop_car_daily (
     title text,
     year int,
     url text,
-    PRIMARY KEY (finnkode, load_time)
-) WITH CLUSTERING ORDER BY (load_time DESC)
+    load_time timestamp,
+    PRIMARY KEY (finnkode, load_date)
+) WITH CLUSTERING ORDER BY (load_date DESC)
     AND bloom_filter_fp_chance = 0.01
     AND caching = {'keys':'ALL', 'rows_per_partition':'NONE'}
     AND comment = ''
@@ -107,8 +107,8 @@ CREATE TABLE finncars.prop_car_daily (
     last_updated text,
     lead_time_deleted int,
     lead_time_sold int,
-    load_date_first text,
-    load_date_latest text,
+    load_date_first timestamp,
+    load_date_latest timestamp,
     location text,
     navigasjon boolean,
     parkeringsensor boolean,
@@ -146,10 +146,10 @@ CREATE TABLE finncars.prop_car_daily (
 DROP TABLE finncars.scraping_log;
 
 CREATE TABLE finncars.scraping_log(
-    load_time timestamp,
     finnkode int,
-    load_date text,
-    PRIMARY KEY (load_time, finnkode)
+    load_date timestamp,
+    load_time timestamp,
+    PRIMARY KEY (load_date, finnkode)
 ) WITH CLUSTERING ORDER BY (finnkode ASC)
     AND bloom_filter_fp_chance = 0.01
     AND caching = {'keys':'ALL', 'rows_per_partition':'NONE'}
