@@ -46,7 +46,7 @@ object Utility {
     val carInformation = jsonCarDetail("information").toString
     val deleted = jsonCarDetail("deleted").as[Boolean]
     val load_time = System.currentTimeMillis()
-    val load_date = new java.util.Date(load_time).toInstant().atZone(ZoneId.systemDefault()).toLocalDate().toString
+    val load_date = acqCarHdr.load_date //to be able to join acq car header and acq car details on date
     AcqCarDetails(finnkode = acqCarHdr.finnkode, properties = carProperties, equipment = carEquipment, information = carInformation, deleted = deleted, load_time = load_time, load_date = load_date, url=acqCarHdr.url)
   }
 

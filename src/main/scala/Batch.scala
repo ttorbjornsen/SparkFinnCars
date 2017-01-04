@@ -11,5 +11,16 @@ object Batch {
   sc.setLogLevel("WARN")
   val sqlCtx = new SQLContext(sc)
 
+  val acqCarHdrDF = sqlCtx.read.
+    format("org.apache.spark.sql.cassandra").
+    options(Map("table" -> "acq_car_h", "keyspace" -> "finncars")).
+    load()
+
+  val acqCarDetDF = sqlCtx.read.
+    format("org.apache.spark.sql.cassandra").
+    options(Map("table" -> "acq_car_d", "keyspace" -> "finncars")).
+    load()
+
+
 
 }

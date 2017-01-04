@@ -60,11 +60,14 @@ object StreamFromKafka extends App {
 
           println(acqCarDetailsList.length.toString + " records written to Cassandra table acq_car_d")
 
+          carHdrDF.select("finnkode", "load_time", "load_date").write.
+            format("org.apache.spark.sql.cassandra").
+            options(Map("table" -> "scraping_log", "keyspace" -> "finncars")).
+            mode(SaveMode.Append).
+            save
 
-//          sqlCtx.read.
-//            format("org.apache.spark.sql.cassandra").
-//            options(Map("table" -> "acq_car_h", "keyspace" -> "finncars")).
-//            load().show
+          println(acqCarHdrList.length.toString + " log records written to Cassandra table scraping_log")
+
 
         }
       }})
