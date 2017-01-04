@@ -1,3 +1,4 @@
+package ttorbjornsen.finncars
 import java.util.Properties
 
 import kafka.serializer.StringDecoder
@@ -44,12 +45,21 @@ object StreamFromKafka extends App {
           mode(SaveMode.Append).
           save
 
-          //val acqCarHdrList = List(
-          val acqCarHdrUrlList = acqCarHdrList.map(_.finnkode)
+          println(acqCarHdrList.length.toString + " records written to Cassandra table acq_car_h")
 
-          for (acqCarHdr <- acqCarHdrList){
+          val acqCarDetailsList = acqCarHdrList.map { carHeader =>
+            Utility.createAcqCarDetailsObject(carHeader)
+          }
 
-            }
+          val carDetDF = sqlCtx.createDataFrame(acqCarDetailsList)
+          carDetDF.write.
+            format("org.apache.spark.sql.cassandra").
+            options(Map("table" -> "acq_car_d", "keyspace" -> "finncars")).
+            mode(SaveMode.Append).
+            save
+
+          println(acqCarDetailsList.length.toString + " records written to Cassandra table acq_car_d")
+
 
 //          sqlCtx.read.
 //            format("org.apache.spark.sql.cassandra").

@@ -9,6 +9,7 @@ CREATE TABLE finncars.acq_car_h (
     price text,
     title text,
     year text,
+    url text,
     PRIMARY KEY (finnkode, load_time)
 ) WITH CLUSTERING ORDER BY (load_time DESC)
     AND bloom_filter_fp_chance = 0.01
@@ -36,6 +37,7 @@ CREATE TABLE finncars.acq_car_d (
     equipment text,
     information text,
     properties text,
+    url text,
     PRIMARY KEY (finnkode, load_time)
 ) WITH CLUSTERING ORDER BY (load_time DESC)
     AND bloom_filter_fp_chance = 0.01
@@ -68,6 +70,7 @@ CREATE TABLE finncars.prop_car_daily (
     sold boolean,
     title text,
     year int,
+    url text,
     PRIMARY KEY (finnkode, load_time)
 ) WITH CLUSTERING ORDER BY (load_time DESC)
     AND bloom_filter_fp_chance = 0.01
@@ -123,7 +126,8 @@ CREATE TABLE finncars.prop_car_daily (
     title text,
     vekt int,
     xenon boolean,
-    year int
+    year int,
+    url text,
 ) WITH bloom_filter_fp_chance = 0.01
     AND caching = {'keys':'ALL', 'rows_per_partition':'NONE'}
     AND comment = ''

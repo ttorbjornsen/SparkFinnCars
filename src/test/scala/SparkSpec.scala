@@ -1,5 +1,5 @@
 
-package org.mkuthan.spark
+package ttorbjornsen.finncars
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.scalatest.{BeforeAndAfterAll, Suite}
@@ -11,11 +11,9 @@ trait SparkSpec extends BeforeAndAfterAll {
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-    System.setProperty("hadoop.home.dir", "C:\\Users\\torbjorn.torbjornsen\\Hadoop\\")
-    val conf = new SparkConf()
-      .setMaster("local[*]")
-      .setAppName(this.getClass.getSimpleName)
-      .set("spark.cassandra.connection.host","192.168.56.56")
+    val conf = new SparkConf().setAppName("loadRaw").setMaster("local[*]").set("spark.cassandra.connection.host","finncars-cassandra")
+    val sc = new SparkContext(conf)
+    sc.setLogLevel("WARN")
 
     sparkConfig.foreach { case (k, v) => conf.setIfMissing(k, v) }
 

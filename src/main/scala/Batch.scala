@@ -1,3 +1,4 @@
+package ttorbjornsen.finncars
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkContext, SparkConf}
 

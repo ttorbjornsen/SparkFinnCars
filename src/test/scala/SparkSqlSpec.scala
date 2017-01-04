@@ -1,4 +1,4 @@
-package org.mkuthan.spark
+package ttorbjornsen.finncars
 
 import org.scalatest.Suite
 import org.apache.spark.sql.SQLContext

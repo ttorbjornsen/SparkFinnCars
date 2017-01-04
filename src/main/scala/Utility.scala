@@ -1,3 +1,4 @@
+package ttorbjornsen.finncars
 import java.lang.IndexOutOfBoundsException
 
 import com.datastax.spark.connector.cql.CassandraConnector
@@ -38,17 +39,17 @@ object Utility {
 
 
 
-  def createAcqCarDetailsObject(i:Int, jsonCarHdr:JsValue)= {
-    val url = jsonCarHdr.\\("group").head(i).\("title").head.\("href").as[String]
-    val jsonCarDetail = scrapeCarDetails(url)
+  def createAcqCarDetailsObject(acqCarHdr:AcqCarHeader)= {
+    val jsonCarDetail = scrapeCarDetails(acqCarHdr.url)
     val carProperties = jsonCarDetail("properties").toString
     val carEquipment = jsonCarDetail("equipment").toString
     val carInformation = jsonCarDetail("information").toString
     val deleted = jsonCarDetail("deleted").as[Boolean]
-    val load_time = jsonCarHdr.\\("timestamp")(0).as[Long]
+    val load_time = System.currentTimeMillis()
     val load_date = new java.util.Date(load_time).toInstant().atZone(ZoneId.systemDefault()).toLocalDate().toString
-//    AcqCarDetails(finnkode = url, properties = carProperties, equipment = carEquipment, information = carInformation, deleted = deleted, load_time = load_time, load_date = load_date)
+    AcqCarDetails(finnkode = acqCarHdr.finnkode, properties = carProperties, equipment = carEquipment, information = carInformation, deleted = deleted, load_time = load_time, load_date = load_date, url=acqCarHdr.url)
   }
+
 
     
   def createAcqCarHeaderObjects(jsonCarHdr:JsValue): List[AcqCarHeader] ={
@@ -61,13 +62,23 @@ object Utility {
         val year = jsonCarHdr(i).\("year").asOpt[String].getOrElse(Utility.Constants.EmptyString)
         val km = jsonCarHdr(i).\("km").asOpt[String].getOrElse(Utility.Constants.EmptyString)
         val price = jsonCarHdr(i).\("price").asOpt[String].getOrElse(Utility.Constants.EmptyString)
+        val url = generateFinnCarUrl(finnkode)
         val load_time = System.currentTimeMillis()
         val load_date = new java.util.Date(load_time).toInstant().atZone(ZoneId.systemDefault()).toLocalDate().toString
-        AcqCarHeader(finnkode=finnkode, location=location, title = title, year=year, km=km, price=price, load_time=load_time, load_date=load_date)
+        AcqCarHeader(finnkode=finnkode, location=location, title = title, year=year, km=km, price=price, load_time=load_time, load_date=load_date, url=url)
       }
       acqCarHeaderList.toList
 
   }
+
+  def generateFinnCarUrl (finnkode:Int): String = {
+    //val finnkode = 88450076
+    val baseUrl = "http://m.finn.no/car/used/ad.html?finnkode="
+    val finnCarUrl = baseUrl + finnkode.toString
+    finnCarUrl
+  }
+
+
 
   def getURL(url: String)(retry: Int): Try[Document] = {
     Try(Jsoup.connect(url).get)
