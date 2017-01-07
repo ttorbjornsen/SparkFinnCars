@@ -1,31 +1,21 @@
 package ttorbjornsen.finncars
-import java.lang.IndexOutOfBoundsException
-import java.text.SimpleDateFormat
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
+import java.util.HashMap
 
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.DataFrame
-import org.jsoup.{HttpStatusException, Jsoup}
-import org.jsoup.nodes.{Entities, _}
-import org.jsoup.nodes.Document.OutputSettings
+import org.apache.spark.sql.Dataset
+import org.jsoup.Jsoup
+import org.jsoup.nodes._
 import play.api.libs.json._
-import org.jsoup.select.Elements
-import org.jsoup.nodes.Document.OutputSettings
 
-import scala.collection.immutable.Map
 import scala.collection.JavaConversions._
-import java.util.HashMap
-
+import scala.collection.immutable.Map
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
-import scala.util.Try
-import scala.util.{Failure, Success}
-import java.net.URL
-import java.time.temporal.ChronoUnit
-import java.time.{LocalDateTime, LocalDate, ZoneId}
-import java.util
-import java.util.HashMap
+import scala.util.{Failure, Success, Try}
 
 
 
@@ -415,6 +405,72 @@ object Utility {
   }
 
 
+  def createPropCar(acqCarH:Dataset[AcqCarHeader], acqCarD:Dataset[AcqCarDetails]):PropCar = {
+
+    val title = acqCarH.first.title
+    /* andre header attributter */
+
+    /* f.eks. for delta pris, så må en gå til forrige AcqCarD rad for å hente ut pris osv.
+    TRENGER VEL IKKE JOINE?
+     */
+
+    PropCar(title=acqCarH.first.title)
+  }
+//      //val acqCarHeader = AcqCarHeader("Volkswagen Passat 1,6 TDI 105hk BlueMotion Business","http://m.finn.no/car/used/ad.html?finnkode=78537231","Kirkenes","2010","121 835 km","149 000,-",2016-07-04 13:41:21.477,2016-07-04))
+//
+//      val acqCarDRenamed = acqCarD.
+//        withColumnRenamed("finnkode", "finnkodeD").
+//        withColumnRenamed("load_date", "load_dateD")
+//
+//      val acqCarJoin = acqCarH.join(acqCarD, acqCarH("finnkode") <=> acqCarD("finnkodeD") &&
+//        acqCarH("load_date") <=> acqCarD("load_dateD")).
+//        drop("finnkodeD","load_dateD")
+//
+//
+//
+//      val prevAcqCarDetails = _csc.sparkContext.cassandraTable[AcqCarDetails]("finncars", "acq_car_details").
+//        where("url = ?", acqCarHeader.url).
+//        where("load_time <= ?", new java.util.Date(acqCarHeader.load_time)).
+//        filter(row => row.deleted == false).collect
+//
+//      if (prevAcqCarDetails.length > 0) {
+//        val acqCarDetails = prevAcqCarDetails.maxBy(_.load_time)
+//        val propertiesMap:HashMap[String,String] = Utility.getMapFromJsonMap(acqCarDetails.properties)
+//        val equipmentList:Set[String] = Utility.getSetFromJsonArray(acqCarDetails.equipment)
+//        PropCar(url=acqCarHeader.url,
+//          finnkode=Utility.parseFinnkode(acqCarHeader.url),
+//          location=acqCarHeader.location,
+//          title=acqCarHeader.title,
+//          year=Utility.parseYear(acqCarHeader.year),
+//          km=Utility.parseKM(acqCarHeader.km),
+//          price=getLastPrice(acqCarHeader.price, acqCarHeader.url, acqCarHeader.load_date, acqCarHeader.load_time),
+//          properties=propertiesMap,
+//          equipment=equipmentList,
+//          information=acqCarDetails.information,
+//          sold=Utility.carMarkedAsSold(acqCarHeader.price),
+//          deleted=acqCarDetails.deleted,
+//          load_time=acqCarHeader.load_time,
+//          load_date=acqCarHeader.load_date)
+//      } else {
+//        PropCar(url=acqCarHeader.url,
+//          finnkode=Utility.parseFinnkode(acqCarHeader.url),
+//          location=acqCarHeader.location,
+//          title=acqCarHeader.title,
+//          year=Utility.parseYear(acqCarHeader.year),
+//          km=Utility.parseKM(acqCarHeader.km),
+//          price=getLastPrice(acqCarHeader.price, acqCarHeader.url, acqCarHeader.load_date, acqCarHeader.load_time),
+//          properties=Utility.Constants.EmptyMap,
+//          equipment=Utility.Constants.EmptyList,
+//          information=Utility.Constants.EmptyString,
+//          sold=Utility.carMarkedAsSold(acqCarHeader.price),
+//          deleted=true,
+//          load_time=acqCarHeader.load_time,
+//          load_date=acqCarHeader.load_date)
+//      }
+//
+
+
+
   def saveToCSV(rdd:RDD[org.apache.spark.sql.Row]) = {
     val temp = rdd.map(row => row.mkString(";"))
     temp.coalesce(1).saveAsTextFile("/home/torbjorn/projects/temp_spark_output/")
@@ -437,9 +493,4 @@ object Utility {
     val ETLSafetyMargin = 7 //days
     val ETLFirstLoadDate = LocalDate.of(2016,7,1)
   }
-
-
-
-
-
 }

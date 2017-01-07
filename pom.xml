@@ -90,6 +90,9 @@
         <version>0.4.13</version>
         <configuration>
           <imageName>sparkfinncars</imageName>
+          <imageTags>
+            <imageTag>stream</imageTag>
+          </imageTags>
           <dockerDirectory>src/docker</dockerDirectory>
           <resources>
             <resource>
