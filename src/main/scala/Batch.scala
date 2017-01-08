@@ -36,26 +36,28 @@ object Batch extends App {
 
 
   finnkodeLoadDate.slice(1,4).map { row =>
-      val acqCarH = spark.read.
+      val acqCarHFinnkode = spark.read.
       format("org.apache.spark.sql.cassandra").
       options(Map("table" -> "acq_car_h", "keyspace" -> "finncars")).
       load.
       filter("finnkode = " + row(0)).
-      filter("load_date <= cast('" + row(1) + "' as timestamp)")
+      filter("load_date <= cast('" + row(1) + "' as timestamp)").
+      toDF().
+      as[AcqCarHeader]
 
     //      filter("finnkode = 60070354").
 //      filter("load_date <= cast('2017-01-04' as timestamp)")
 
-      val acqCarHeaderDS = acqCarH.toDF().as[AcqCarHeader]
-
-    val acqCarD = spark.read.
+    val acqCarDFinnkode = spark.read.
       format("org.apache.spark.sql.cassandra").
       options(Map("table" -> "acq_car_d", "keyspace" -> "finncars")).
       load().
       filter("finnkode = " + row(0)).
-      filter("load_date <= cast('" + row(1) + "' as timestamp)")
+      filter("load_date <= cast('" + row(1) + "' as timestamp)").
+      toDF().
+      as[AcqCarDetails]
 
-    val acqCarDetailsDS = acqCarD.toDF().as[AcqCarDetails]
+    val propCarFinnkode = Utility.createPropCar(acqCarHFinnkode, acqCarDFinnkode)
 
     }
 }

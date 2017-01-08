@@ -33,8 +33,6 @@ object StreamFromKafka extends App {
         val content = rdd.map(_._2)
 
         content.foreach { jsonDoc =>
-//          println("JSONDOC")
-//          println(jsonDoc)
           val jsonCarHdr: JsValue = Json.parse(jsonDoc.mkString)
           val acqCarHdrList = Utility.createAcqCarHeaderObjects(jsonCarHdr)
           val carHdrDF = sqlCtx.createDataFrame(acqCarHdrList)
@@ -46,6 +44,14 @@ object StreamFromKafka extends App {
           save
 
           println(acqCarHdrList.length.toString + " records written to Cassandra table acq_car_h")
+
+          val lastSuccessfulLoadHDf = sqlCtx.createDataFrame(Seq(LastSuccessfulLoad("acq_car_h",System.currentTimeMillis())))
+          lastSuccessfulLoadHDf.write.
+            format("org.apache.spark.sql.cassandra").
+            options(Map("table" -> "last_successful_load", "keyspace" -> "finncars")).
+            mode(SaveMode.Append).
+            save
+
 
           val acqCarDetailsList = acqCarHdrList.map { carHeader =>
             Utility.createAcqCarDetailsObject(carHeader)
@@ -68,6 +74,12 @@ object StreamFromKafka extends App {
 
           println(acqCarHdrList.length.toString + " log records written to Cassandra table scraping_log")
 
+          val lastSuccessfulLoadDDf = sqlCtx.createDataFrame(Seq(LastSuccessfulLoad("acq_car_d",System.currentTimeMillis())))
+          lastSuccessfulLoadDDf.write.
+            format("org.apache.spark.sql.cassandra").
+            options(Map("table" -> "last_successful_load", "keyspace" -> "finncars")).
+            mode(SaveMode.Append).
+            save
 
         }
       }})

@@ -1,5 +1,5 @@
 package ttorbjornsen.finncars
-import java.time.LocalDate
+import java.time.{ZoneId, LocalDate}
 import java.time.temporal.ChronoUnit
 import java.util.HashMap
 
@@ -10,6 +10,7 @@ import org.apache.spark.sql.Dataset
 import org.jsoup.Jsoup
 import org.jsoup.nodes._
 import play.api.libs.json._
+import org.apache.spark.sql.functions._
 
 import scala.collection.JavaConversions._
 import scala.collection.immutable.Map
@@ -55,8 +56,8 @@ object Utility {
         val price = jsonCarHdr(i).\("price").asOpt[String].getOrElse(Utility.Constants.EmptyString)
         val url = generateFinnCarUrl(finnkode)
         val load_time = System.currentTimeMillis()
-        //val load_date = new java.util.Date(load_time).toInstant().atZone(ZoneId.systemDefault()).toLocalDate().toString
-        val load_date = new java.sql.Date(load_time)
+        val load_date = new java.util.Date(load_time).toInstant().atZone(ZoneId.systemDefault()).toEpochSecond
+        //val load_date = new java.sql.Date(load_time)
         AcqCarHeader(finnkode=finnkode, location=location, title = title, year=year, km=km, price=price, load_time=load_time, load_date=load_date, url=url)
       }
       acqCarHeaderList.toList
@@ -159,6 +160,8 @@ object Utility {
   def getMapFromJsonMap(jsonString:String, excludedKeys:Seq[String]=Seq("None")):HashMap[String,String] = {
     //    val keys = Seq("Salgsform", "Girkasse")
     //    val jsonString = "{\"Salgsform\":\"Bruktbil til salgs\",\"Girkasse\":\"Automat\",\"Antall seter\":\"5\"}"
+    //val jsonString = """{"Salgsform":"Bruktbil til salgs"}"""
+    //val excludedKeys=Seq("")
     val jsValueMap: JsValue = Json.parse(jsonString)
     val propertiesMap = jsValueMap.as[Map[String,String]]
     val hashMap = new HashMap[String, String]
@@ -195,7 +198,7 @@ object Utility {
 
   def parseKM(km:String):Int = {
     //val km = "99 000 km"
-    val parsedKM = km.replace(" ", "").replace("km", "").replace("\"", "")
+    val parsedKM = km.replaceAll("[^\\x00-\\x7F]", "").replace(" ", "").replace("km", "").replace("\"", "")
     if (parsedKM.forall(_.isDigit)) parsedKM.toInt else -1
   }
 
@@ -258,41 +261,41 @@ object Utility {
     topPropCar
   }
 
-  def getBtlKfFirstLoad(firstPropCar:PropCar):BtlCar ={
-    BtlCar(price_first = firstPropCar.price, load_date_first = firstPropCar.load_date)
-  }
+//  def getBtlKfFirstLoad(firstPropCar:PropCar):BtlCar ={
+//    BtlCar(price_first = firstPropCar.price, load_date_first = firstPropCar.load_date)
+//  }
 
-  def getBtlKfLastLoad(lastPropCar:PropCar):BtlCar ={
-    BtlCar(finnkode=lastPropCar.finnkode,
-      title=lastPropCar.title,
-      location=lastPropCar.location,
-      year=lastPropCar.year,
-      km=lastPropCar.km,
-      price_last = lastPropCar.price,
-      sold = lastPropCar.sold,
-      deleted = lastPropCar.deleted,
-      load_date_latest = lastPropCar.load_date,
-      automatgir = hasAutomatgir(lastPropCar.properties),
-      hengerfeste = hasHengerfeste(lastPropCar.equipment),
-      skinninterior = getSkinninterior(lastPropCar.equipment),
-      drivstoff = getDrivstoff(lastPropCar.properties),
-      sylindervolum = getSylindervolum(lastPropCar.properties),
-      effekt = getEffekt(lastPropCar.properties),
-      regnsensor = hasRegnsensor(lastPropCar.equipment),
-      farge = getFarge(lastPropCar.properties),
-      cruisekontroll = hasCruisekontroll(lastPropCar.equipment),
-      parkeringsensor = hasParkeringsensor(lastPropCar.equipment),
-      antall_eiere = getAntallEiere(lastPropCar.properties),
-      kommune = getKommune(lastPropCar.location),
-      fylke = getFylke(lastPropCar.location),
-      xenon = hasXenon(lastPropCar.equipment),
-      navigasjon = hasNavigasjon(lastPropCar.equipment),
-      servicehefte = hasServicehefte(lastPropCar.information),
-      sportsseter = hasSportsseter(lastPropCar.equipment),
-      tilstandsrapport = hasTilstandsrapport(lastPropCar.properties),
-      vekt = getVekt(lastPropCar.properties)
-    )
-  }
+//  def getBtlKfLastLoad(lastPropCar:PropCar):BtlCar ={
+//    BtlCar(finnkode=lastPropCar.finnkode,
+//      title=lastPropCar.title,
+//      location=lastPropCar.location,
+//      year=lastPropCar.year,
+//      km=lastPropCar.km,
+//      price_last = lastPropCar.price,
+//      sold = lastPropCar.sold,
+//      deleted = lastPropCar.deleted,
+//      load_date_latest = lastPropCar.load_date,
+//      automatgir = hasAutomatgir(lastPropCar.properties),
+//      hengerfeste = hasHengerfeste(lastPropCar.equipment),
+//      skinninterior = getSkinninterior(lastPropCar.equipment),
+//      drivstoff = getDrivstoff(lastPropCar.properties),
+//      sylindervolum = getSylindervolum(lastPropCar.properties),
+//      effekt = getEffekt(lastPropCar.properties),
+//      regnsensor = hasRegnsensor(lastPropCar.equipment),
+//      farge = getFarge(lastPropCar.properties),
+//      cruisekontroll = hasCruisekontroll(lastPropCar.equipment),
+//      parkeringsensor = hasParkeringsensor(lastPropCar.equipment),
+//      antall_eiere = getAntallEiere(lastPropCar.properties),
+//      kommune = getKommune(lastPropCar.location),
+//      fylke = getFylke(lastPropCar.location),
+//      xenon = hasXenon(lastPropCar.equipment),
+//      navigasjon = hasNavigasjon(lastPropCar.equipment),
+//      servicehefte = hasServicehefte(lastPropCar.information),
+//      sportsseter = hasSportsseter(lastPropCar.equipment),
+//      tilstandsrapport = hasTilstandsrapport(lastPropCar.properties),
+//      vekt = getVekt(lastPropCar.properties)
+//    )
+//  }
 
 
   def hasAutomatgir(properties:HashMap[String, String]):Boolean = {
@@ -406,15 +409,26 @@ object Utility {
 
 
   def createPropCar(acqCarH:Dataset[AcqCarHeader], acqCarD:Dataset[AcqCarDetails]):PropCar = {
+    val acqCarHSortDate = acqCarH.orderBy(desc("load_date"))
+    val acqCarDSortDate = acqCarD.orderBy(desc("load_date"))
+    val finnkode = acqCarHSortDate.first.finnkode
+    val load_date = acqCarHSortDate.first.load_date
+    val title = acqCarHSortDate.first.title
+    val location = acqCarHSortDate.first.location
+    val year = parseYear(acqCarHSortDate.first.year)
+    val km = parseKM(acqCarHSortDate.first.km)
+    val price = parsePrice(acqCarHSortDate.first.price)
+    val properties = getMapFromJsonMap(acqCarDSortDate.first.properties.replace("\"{", "{").replace("}\"", "}"))
+    val equipment = getSetFromJsonArray(acqCarDSortDate.first.equipment.replace("\"[", "[").replace("]\"", "]"))
+    val information = acqCarDSortDate.first.information
+    val sold = carMarkedAsSold(price)
+    val deleted = false //TODO:How to identify?
+    val load_time = System.currentTimeMillis()
+    val url = acqCarHSortDate.first.url
 
-    val title = acqCarH.first.title
-    /* andre header attributter */
+    PropCar(finnkode=finnkode,load_date=load_date,title=title,location=location,year=year,km=km,price=price,properties=properties,equipment=equipment,information=information,sold=sold,deleted=deleted,load_time=load_time,url=url)
 
-    /* f.eks. for delta pris, så må en gå til forrige AcqCarD rad for å hente ut pris osv.
-    TRENGER VEL IKKE JOINE?
-     */
 
-    PropCar(title=acqCarH.first.title)
   }
 //      //val acqCarHeader = AcqCarHeader("Volkswagen Passat 1,6 TDI 105hk BlueMotion Business","http://m.finn.no/car/used/ad.html?finnkode=78537231","Kirkenes","2010","121 835 km","149 000,-",2016-07-04 13:41:21.477,2016-07-04))
 //
@@ -469,7 +483,14 @@ object Utility {
 //      }
 //
 
+  def parsePrice(price:String):String = {
 
+    val parsedPrice = if (price == "Solgt") "Solgt" else {
+      val tempPrice = price.replace(",-","").replaceAll("[^\\x00-\\x7F]", "").replace(" ","").replace("\"", "")
+      if (tempPrice.forall(_.isDigit)) tempPrice.toString else "-1" //price invalid
+    }
+    parsedPrice
+  }
 
   def saveToCSV(rdd:RDD[org.apache.spark.sql.Row]) = {
     val temp = rdd.map(row => row.mkString(";"))
