@@ -64,7 +64,7 @@ CREATE TABLE finncars.prop_car_daily (
     information text,
     km int,
     location text,
-    price int,
+    price text,
     properties map<text, text>,
     sold boolean,
     title text,
