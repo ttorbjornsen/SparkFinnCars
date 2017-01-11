@@ -30,6 +30,7 @@ object StreamFromKafka extends App {
       if (rdd.toLocalIterator.nonEmpty) {
         //when new data from Kafka is available
         println(rdd.count + " new Kafka messages to process")
+
         val content = rdd.map(_._2)
 
         content.foreach { jsonDoc =>

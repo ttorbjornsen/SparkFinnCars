@@ -1,7 +1,7 @@
 package ttorbjornsen.finncars
 import java.time.{ZoneId, LocalDate}
 import java.time.temporal.ChronoUnit
-import java.util.HashMap
+import java.util.{Calendar, HashMap}
 
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.SparkConf
@@ -56,7 +56,7 @@ object Utility {
         val price = jsonCarHdr(i).\("price").asOpt[String].getOrElse(Utility.Constants.EmptyString)
         val url = generateFinnCarUrl(finnkode)
         val load_time = System.currentTimeMillis()
-        val load_date = new java.util.Date(load_time).toInstant().atZone(ZoneId.systemDefault()).toEpochSecond
+        val load_date = truncDate(new java.util.Date(load_time)).toInstant().atZone(ZoneId.systemDefault()).toEpochSecond*1000
         //val load_date = new java.sql.Date(load_time)
         AcqCarHeader(finnkode=finnkode, location=location, title = title, year=year, km=km, price=price, load_time=load_time, load_date=load_date, url=url)
       }
@@ -237,67 +237,6 @@ object Utility {
     listOfDays.toList
   }
 
-
-
-
-  def getFirstRecordFromFilteredPropCarRDD(propCarPairRDD:RDD[(String,PropCar)], filterFunc: ((String, PropCar)) => Boolean = (t => true)):RDD[(String, PropCar)] = {
-    val propCarPairRDDFiltered = propCarPairRDD.filter(filterFunc)
-    val firstRecordsRDD = propCarPairRDDFiltered.reduceByKey((c1,c2) => if (c1.load_time < c2.load_time) c1 else c2)
-    //val firstRecordsRDD = propCarPairRDD.reduceByKey((c1,c2) => if (c1.load_time < c2.load_time) c1 else c2)
-    firstRecordsRDD
-  }
-
-  def getLastPropCarAll(propCarPairRDD: RDD[(String,PropCar)], filterFunc: ((String, PropCar)) => Boolean = (t => true)):RDD[(String, PropCar)] = {
-    val propCarPairRDDFiltered = propCarPairRDD.filter(filterFunc)
-    val lastRecordsRDD = propCarPairRDDFiltered.reduceByKey((c1,c2) => {
-      if (c1.load_time >= c2.load_time) c1 else c2
-    })
-    lastRecordsRDD
-  }
-  //    val jsonString = "[\"Aluminiumsfelger\",\"Automatisk klimaanlegg\",\"Skinnseter\"]"
-
-  def popTopPropCarRecord(propCarPairRDD:RDD[(String,PropCar)], url:String):PropCar = {
-    val topPropCar = propCarPairRDD.lookup(url)(0)
-    topPropCar
-  }
-
-//  def getBtlKfFirstLoad(firstPropCar:PropCar):BtlCar ={
-//    BtlCar(price_first = firstPropCar.price, load_date_first = firstPropCar.load_date)
-//  }
-
-//  def getBtlKfLastLoad(lastPropCar:PropCar):BtlCar ={
-//    BtlCar(finnkode=lastPropCar.finnkode,
-//      title=lastPropCar.title,
-//      location=lastPropCar.location,
-//      year=lastPropCar.year,
-//      km=lastPropCar.km,
-//      price_last = lastPropCar.price,
-//      sold = lastPropCar.sold,
-//      deleted = lastPropCar.deleted,
-//      load_date_latest = lastPropCar.load_date,
-//      automatgir = hasAutomatgir(lastPropCar.properties),
-//      hengerfeste = hasHengerfeste(lastPropCar.equipment),
-//      skinninterior = getSkinninterior(lastPropCar.equipment),
-//      drivstoff = getDrivstoff(lastPropCar.properties),
-//      sylindervolum = getSylindervolum(lastPropCar.properties),
-//      effekt = getEffekt(lastPropCar.properties),
-//      regnsensor = hasRegnsensor(lastPropCar.equipment),
-//      farge = getFarge(lastPropCar.properties),
-//      cruisekontroll = hasCruisekontroll(lastPropCar.equipment),
-//      parkeringsensor = hasParkeringsensor(lastPropCar.equipment),
-//      antall_eiere = getAntallEiere(lastPropCar.properties),
-//      kommune = getKommune(lastPropCar.location),
-//      fylke = getFylke(lastPropCar.location),
-//      xenon = hasXenon(lastPropCar.equipment),
-//      navigasjon = hasNavigasjon(lastPropCar.equipment),
-//      servicehefte = hasServicehefte(lastPropCar.information),
-//      sportsseter = hasSportsseter(lastPropCar.equipment),
-//      tilstandsrapport = hasTilstandsrapport(lastPropCar.properties),
-//      vekt = getVekt(lastPropCar.properties)
-//    )
-//  }
-
-
   def hasAutomatgir(properties:HashMap[String, String]):Boolean = {
     properties.get("Girkasse") == "Automat"
   }
@@ -386,6 +325,11 @@ object Utility {
     text.replaceAll("[\\D]", "").toInt
   }
 
+  def removeSpecialCharacters(text:String):String = {
+
+    "test"
+  }
+
 
   def propCarToString(p:Product):String = {
     p.productIterator.map {
@@ -409,79 +353,27 @@ object Utility {
 
 
   def createPropCar(acqCarH:Dataset[AcqCarHeader], acqCarD:Dataset[AcqCarDetails]):PropCar = {
-    val acqCarHSortDate = acqCarH.orderBy(desc("load_date"))
-    val acqCarDSortDate = acqCarD.orderBy(desc("load_date"))
-    val finnkode = acqCarHSortDate.first.finnkode
-    val load_date = acqCarHSortDate.first.load_date
-    val title = acqCarHSortDate.first.title
-    val location = acqCarHSortDate.first.location
-    val year = parseYear(acqCarHSortDate.first.year)
-    val km = parseKM(acqCarHSortDate.first.km)
-    val price = parsePrice(acqCarHSortDate.first.price)
-    val properties = getMapFromJsonMap(acqCarDSortDate.first.properties.replace("\"{", "{").replace("}\"", "}"))
-    val equipment = getSetFromJsonArray(acqCarDSortDate.first.equipment.replace("\"[", "[").replace("]\"", "]"))
-    val information = acqCarDSortDate.first.information
+    val firstAcqCarH = acqCarH.orderBy(desc("load_date")).first
+    val firstAcqCarD = acqCarD.orderBy(desc("load_date")).first
+    val finnkode = firstAcqCarH.finnkode
+    val load_date = firstAcqCarH.load_date*1000
+    val title = firstAcqCarH.title.replace("|","")
+    val location = firstAcqCarH.location
+    val year = parseYear(firstAcqCarH.year)
+    val km = parseKM(firstAcqCarH.km)
+    val price = parsePrice(firstAcqCarH.price)
+    val properties = getMapFromJsonMap(firstAcqCarD.properties.replace("\"{", "{").replace("}\"", "}").replace("|",""))
+    val equipment = getSetFromJsonArray(firstAcqCarD.equipment.replace("\"[", "[").replace("]\"", "]").replace("|",""))
+    val information = firstAcqCarD.information.replace("|","")
     val sold = carMarkedAsSold(price)
     val deleted = false //TODO:How to identify?
     val load_time = System.currentTimeMillis()
-    val url = acqCarHSortDate.first.url
+    val url = firstAcqCarH.url
 
     PropCar(finnkode=finnkode,load_date=load_date,title=title,location=location,year=year,km=km,price=price,properties=properties,equipment=equipment,information=information,sold=sold,deleted=deleted,load_time=load_time,url=url)
 
 
   }
-//      //val acqCarHeader = AcqCarHeader("Volkswagen Passat 1,6 TDI 105hk BlueMotion Business","http://m.finn.no/car/used/ad.html?finnkode=78537231","Kirkenes","2010","121 835 km","149 000,-",2016-07-04 13:41:21.477,2016-07-04))
-//
-//      val acqCarDRenamed = acqCarD.
-//        withColumnRenamed("finnkode", "finnkodeD").
-//        withColumnRenamed("load_date", "load_dateD")
-//
-//      val acqCarJoin = acqCarH.join(acqCarD, acqCarH("finnkode") <=> acqCarD("finnkodeD") &&
-//        acqCarH("load_date") <=> acqCarD("load_dateD")).
-//        drop("finnkodeD","load_dateD")
-//
-//
-//
-//      val prevAcqCarDetails = _csc.sparkContext.cassandraTable[AcqCarDetails]("finncars", "acq_car_details").
-//        where("url = ?", acqCarHeader.url).
-//        where("load_time <= ?", new java.util.Date(acqCarHeader.load_time)).
-//        filter(row => row.deleted == false).collect
-//
-//      if (prevAcqCarDetails.length > 0) {
-//        val acqCarDetails = prevAcqCarDetails.maxBy(_.load_time)
-//        val propertiesMap:HashMap[String,String] = Utility.getMapFromJsonMap(acqCarDetails.properties)
-//        val equipmentList:Set[String] = Utility.getSetFromJsonArray(acqCarDetails.equipment)
-//        PropCar(url=acqCarHeader.url,
-//          finnkode=Utility.parseFinnkode(acqCarHeader.url),
-//          location=acqCarHeader.location,
-//          title=acqCarHeader.title,
-//          year=Utility.parseYear(acqCarHeader.year),
-//          km=Utility.parseKM(acqCarHeader.km),
-//          price=getLastPrice(acqCarHeader.price, acqCarHeader.url, acqCarHeader.load_date, acqCarHeader.load_time),
-//          properties=propertiesMap,
-//          equipment=equipmentList,
-//          information=acqCarDetails.information,
-//          sold=Utility.carMarkedAsSold(acqCarHeader.price),
-//          deleted=acqCarDetails.deleted,
-//          load_time=acqCarHeader.load_time,
-//          load_date=acqCarHeader.load_date)
-//      } else {
-//        PropCar(url=acqCarHeader.url,
-//          finnkode=Utility.parseFinnkode(acqCarHeader.url),
-//          location=acqCarHeader.location,
-//          title=acqCarHeader.title,
-//          year=Utility.parseYear(acqCarHeader.year),
-//          km=Utility.parseKM(acqCarHeader.km),
-//          price=getLastPrice(acqCarHeader.price, acqCarHeader.url, acqCarHeader.load_date, acqCarHeader.load_time),
-//          properties=Utility.Constants.EmptyMap,
-//          equipment=Utility.Constants.EmptyList,
-//          information=Utility.Constants.EmptyString,
-//          sold=Utility.carMarkedAsSold(acqCarHeader.price),
-//          deleted=true,
-//          load_time=acqCarHeader.load_time,
-//          load_date=acqCarHeader.load_date)
-//      }
-//
 
   def parsePrice(price:String):String = {
 
@@ -490,6 +382,16 @@ object Utility {
       if (tempPrice.forall(_.isDigit)) tempPrice.toString else "-1" //price invalid
     }
     parsedPrice
+  }
+
+  def truncDate(date:java.util.Date):java.util.Date = {
+    val cal = Calendar.getInstance()
+    cal.setTime(date)
+    cal.set(Calendar.HOUR_OF_DAY,0)
+    cal.set(Calendar.MINUTE,0)
+    cal.set(Calendar.SECOND,0)
+    cal.set(Calendar.MILLISECOND,0)
+    cal.getTime()
   }
 
   def saveToCSV(rdd:RDD[org.apache.spark.sql.Row]) = {
