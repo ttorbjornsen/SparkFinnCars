@@ -68,6 +68,7 @@ object Batch extends App {
 
 
         deltaFinnkodeLoadDate.map { row =>
+          //MOST LIKELY SUFFICIENT TO EXTRACT == for header and detail, but may be ok if used for error handling (detail record missing e.g.)
           val acqCarHFinnkode = spark.read.
             format("org.apache.spark.sql.cassandra").
             options(Map("table" -> "acq_car_h", "keyspace" -> "finncars")).
@@ -111,6 +112,7 @@ object Batch extends App {
           i = i + 1
           println(i + " records written for " + load_date)
         }
+        println("insert " + load_date + " into last_successful_load for table prop_car_daily")
         session.execute("INSERT INTO finncars.last_successful_load(table_name,load_date) VALUES('prop_car_daily', '" + load_date + "')")
 
       }

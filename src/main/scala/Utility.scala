@@ -395,8 +395,8 @@ object Utility {
   }
 
   def saveToCSV(rdd:RDD[org.apache.spark.sql.Row]) = {
-    val temp = rdd.map(row => row.mkString(";"))
-    temp.coalesce(1).saveAsTextFile("/home/torbjorn/projects/temp_spark_output/")
+    val temp = rdd.map(row => row.mkString("|"))
+    temp.coalesce(1).saveAsTextFile("/usr/temp/")
   }
 
   def parseDouble(s:String): Option[Double] = {
