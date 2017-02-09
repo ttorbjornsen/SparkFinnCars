@@ -1,4 +1,6 @@
 package ttorbjornsen.finncars
+
+import java.time.LocalDateTime
 import java.util.Properties
 
 import kafka.serializer.StringDecoder
@@ -22,7 +24,7 @@ object StreamFromKafka extends App {
 
 
   val kafkaParams = Map("metadata.broker.list" -> "kafka:9092")//, "auto.offset.reset" -> "smallest")
-  val topics = Set("acq_car_header")
+  val topics = Set("acq_car_h")
   val ssc = new StreamingContext(sc, Seconds(5)) //60 in production
   val directKafkaStream = KafkaUtils.createDirectStream[String, String, StringDecoder, StringDecoder](ssc, kafkaParams, topics)
   directKafkaStream.foreachRDD(
@@ -44,7 +46,7 @@ object StreamFromKafka extends App {
           mode(SaveMode.Append).
           save
 
-          println(acqCarHdrList.length.toString + " records written to Cassandra table acq_car_h")
+          println(acqCarHdrList.length.toString + " records written to Cassandra table acq_car_h. Time : " + new java.util.Date(time.milliseconds).toString)
 
           val lastSuccessfulLoadHDf = sqlCtx.createDataFrame(Seq(LastSuccessfulLoad("acq_car_h",System.currentTimeMillis())))
           lastSuccessfulLoadHDf.write.
@@ -65,7 +67,7 @@ object StreamFromKafka extends App {
             mode(SaveMode.Append).
             save
 
-          println(acqCarDetailsList.length.toString + " records written to Cassandra table acq_car_d")
+          println(acqCarDetailsList.length.toString + " records written to Cassandra table acq_car_d. Time : " + new java.util.Date(time.milliseconds).toString)
 
           carHdrDF.select("finnkode", "load_time", "load_date").write.
             format("org.apache.spark.sql.cassandra").
@@ -73,7 +75,7 @@ object StreamFromKafka extends App {
             mode(SaveMode.Append).
             save
 
-          println(acqCarHdrList.length.toString + " log records written to Cassandra table scraping_log")
+          println(acqCarHdrList.length.toString + " log records written to Cassandra table scraping_log. Time : " + time.toString())
 
           val lastSuccessfulLoadDDf = sqlCtx.createDataFrame(Seq(LastSuccessfulLoad("acq_car_d",System.currentTimeMillis())))
           lastSuccessfulLoadDDf.write.

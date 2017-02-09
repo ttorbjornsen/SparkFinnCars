@@ -1,12 +1,12 @@
 package ttorbjornsen.finncars
-import java.time.{ZoneId, LocalDate}
+import java.time.{Instant, ZoneId, LocalDate}
 import java.time.temporal.ChronoUnit
 import java.util.{Calendar, HashMap}
 
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.Dataset
+import org.apache.spark.sql.{DataFrame, Dataset}
 import org.jsoup.Jsoup
 import org.jsoup.nodes._
 import play.api.libs.json._
@@ -16,9 +16,15 @@ import scala.collection.JavaConversions._
 import scala.collection.immutable.Map
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
+import scala.reflect.io.File
 import scala.util.{Failure, Success, Try}
 
 
+case class AcqCarHeader(finnkode:Int= Utility.Constants.EmptyInt, load_date:Long = Utility.Constants.EmptyInt, load_time:Long= Utility.Constants.EmptyInt, title:String= Utility.Constants.EmptyString, location:String= Utility.Constants.EmptyString, year: String= Utility.Constants.EmptyString, km: String= Utility.Constants.EmptyString, price: String= Utility.Constants.EmptyString, url:String=Utility.Constants.EmptyString)
+case class AcqCarDetails(finnkode:Int= Utility.Constants.EmptyInt, load_date:Long= Utility.Constants.EmptyInt, load_time:Long= Utility.Constants.EmptyInt, properties:String= Utility.Constants.EmptyString, equipment:String= Utility.Constants.EmptyString, information:String= Utility.Constants.EmptyString, deleted:Boolean=false, url:String=Utility.Constants.EmptyString)
+case class PropCar(finnkode:Int = Utility.Constants.EmptyInt, load_date:Long= Utility.Constants.EmptyInt, title:String= Utility.Constants.EmptyString, location:String= Utility.Constants.EmptyString, year: Int= Utility.Constants.EmptyInt, km: Int= Utility.Constants.EmptyInt, price: String= Utility.Constants.EmptyString, properties:String= Utility.Constants.EmptyString, equipment:String= Utility.Constants.EmptyString, information:String= Utility.Constants.EmptyString, sold:Boolean=false, deleted:Boolean=false, load_time:Long = Utility.Constants.EmptyInt, url:String=Utility.Constants.EmptyString)
+case class BtlCar(finnkode:Int = Utility.Constants.EmptyInt,title:String = Utility.Constants.EmptyString,location:String = Utility.Constants.EmptyString,year:Int = Utility.Constants.EmptyInt,km:Int = Utility.Constants.EmptyInt,price_first:Int = Utility.Constants.EmptyInt,price_last:Int = Utility.Constants.EmptyInt,price_delta:Int = Utility.Constants.EmptyInt,sold:Boolean = false,sold_date:String = Utility.Constants.EmptyDate,lead_time_sold:Int = Utility.Constants.EmptyInt,deleted:Boolean = false,deleted_date:String = Utility.Constants.EmptyDate,lead_time_deleted:Int = Utility.Constants.EmptyInt,load_date_first:Long = Utility.Constants.EmptyInt,load_date_latest:Long = Utility.Constants.EmptyInt,automatgir:Boolean = false,hengerfeste:Boolean = false,skinninterior:String = Utility.Constants.EmptyString,drivstoff:String = Utility.Constants.EmptyString,sylindervolum:Double = Utility.Constants.EmptyInt,effekt:Int = Utility.Constants.EmptyInt,regnsensor:Boolean = false,farge:String = Utility.Constants.EmptyString,cruisekontroll:Boolean = false,parkeringsensor:Boolean = false,antall_eiere:Int = Utility.Constants.EmptyInt,kommune:String = Utility.Constants.EmptyString,fylke:String = Utility.Constants.EmptyString,xenon:Boolean = false,navigasjon:Boolean = false,servicehefte:Boolean = false,sportsseter:Boolean= false,tilstandsrapport:Boolean = false,vekt:Int = Utility.Constants.EmptyInt, last_updated:String = Utility.Constants.EmptyDate, url:String=Utility.Constants.EmptyString)
+case class LastSuccessfulLoad(table_name:String, load_date:Long)
 
 
 /**
@@ -181,6 +187,60 @@ object Utility {
     Json.parse(jsonString).as[String]
   }
 
+  def createBtlCar(propCarFinnkodeArray:Array[PropCar]): BtlCar = {
+    val firstRecord = propCarFinnkodeArray(0)
+    val lastRecord = propCarFinnkodeArray(propCarFinnkodeArray.length - 1)
+    val finnkode = lastRecord.finnkode
+    val url = lastRecord.url
+    val title = lastRecord.title
+    val location = lastRecord.location
+    val year = lastRecord.year
+    val km = lastRecord.km
+
+    val firstPrice = propCarFinnkodeArray.find(_.price != "Solgt").getOrElse(PropCar(price = "-1")).price.toInt
+    val lastPrice = propCarFinnkodeArray.find(_.price != "Solgt").getOrElse(PropCar(price = "-1")).price.toInt
+    val deltaPrice = lastPrice - firstPrice
+
+    val sold = lastRecord.sold
+    val soldDate = propCarFinnkodeArray.find(_.price == "Solgt").getOrElse(PropCar()).load_date
+    val soldDateLocalDate = Instant.ofEpochSecond(soldDate).atZone(ZoneId.systemDefault()).toLocalDate()
+
+    //val soldDate = 1484092800+86600 //temp
+    val soldDateString = soldDate.toString
+    val firstLoadDate = firstRecord.load_date
+    val firstLoadDateLocalDate = Instant.ofEpochSecond(firstLoadDate).atZone(ZoneId.systemDefault()).toLocalDate()
+
+    val lastLoadDate = lastRecord.load_date
+    val leadTimeSold = if (soldDate > 0) {
+      ChronoUnit.DAYS.between(firstLoadDateLocalDate,soldDateLocalDate).toInt
+    } else Utility.Constants.EmptyInt
+    val lastPropertiesMap = Utility.getMapFromJsonMap(lastRecord.properties)
+    val lastEquipmentSet = Utility.getSetFromJsonArray(lastRecord.equipment)
+    val automatgir = Utility.hasAutomatgir(lastPropertiesMap)
+    val hengerfeste = Utility.hasHengerfeste(lastEquipmentSet)
+    val skinninterior = Utility.getSkinninterior(lastEquipmentSet)
+    val effekt = Utility.getEffekt(lastPropertiesMap)
+    val drivstoff = Utility.getDrivstoff(lastPropertiesMap)
+    val regnsensor = Utility.hasRegnsensor(lastEquipmentSet)
+    val farge = Utility.getFarge(lastPropertiesMap)
+    val cruisekontroll = Utility.hasCruisekontroll(lastEquipmentSet)
+    val parkeringsensor = Utility.hasParkeringsensor(lastEquipmentSet)
+    val antallEiere = Utility.getAntallEiere(lastPropertiesMap)
+    val xenon = Utility.hasXenon(lastEquipmentSet)
+    val navigasjon = Utility.hasNavigasjon(lastEquipmentSet)
+    val servicehefte = Utility.hasServicehefte(lastRecord.information)
+    val sportsseter = Utility.hasSportsseter(lastEquipmentSet)
+    val tilstandsrapport = Utility.hasTilstandsrapport(lastPropertiesMap)
+    val vekt = Utility.getVekt(lastPropertiesMap)
+
+    BtlCar(finnkode = finnkode, title = title, location = location, year = year, km = km, price_first = firstPrice, price_last = lastPrice,
+      price_delta = deltaPrice, sold = sold, sold_date = soldDateString, lead_time_sold = leadTimeSold, load_date_first = firstLoadDate, load_date_latest = lastLoadDate,
+      automatgir = automatgir, drivstoff = drivstoff, hengerfeste = hengerfeste, skinninterior = skinninterior, effekt = effekt, regnsensor = regnsensor, farge = farge,
+      cruisekontroll = cruisekontroll, parkeringsensor = parkeringsensor, antall_eiere = antallEiere, xenon = xenon, navigasjon = navigasjon,
+      servicehefte = servicehefte, sportsseter = sportsseter, tilstandsrapport = tilstandsrapport, url = url,vekt = vekt)
+
+  }
+
   def setupCassandraTestKeyspace() = {
     val conf = new SparkConf().setAppName("Testing").setMaster("local[*]").set("spark.cassandra.connection.host", "192.168.56.56")
     val ddl_prod = Source.fromFile("C:\\Users\\torbjorn.torbjornsen\\IdeaProjects\\finnCarsSpark\\c.ddl").getLines.mkString
@@ -322,7 +382,10 @@ object Utility {
 
   def getVekt(properties:HashMap[String, String]):Int= {
     val text = properties.getOrElse("Vekt", Utility.Constants.EmptyInt.toString)
-    text.replaceAll("[\\D]", "").toInt
+    val vekt = if (text == Utility.Constants.EmptyInt.toString) {
+      Utility.Constants.EmptyInt.toString.toInt
+    } else text.replaceAll("[\\D]", "").toInt
+    vekt
   }
 
   def removeSpecialCharacters(text:String):String = {
@@ -362,9 +425,11 @@ object Utility {
     val year = parseYear(firstAcqCarH.year)
     val km = parseKM(firstAcqCarH.km)
     val price = parsePrice(firstAcqCarH.price)
-    val properties = getMapFromJsonMap(firstAcqCarD.properties.replace("\"{", "{").replace("}\"", "}").replace("|",""))
-    val equipment = getSetFromJsonArray(firstAcqCarD.equipment.replace("\"[", "[").replace("]\"", "]").replace("|",""))
-    val information = firstAcqCarD.information.replace("|","")
+    val properties = firstAcqCarD.properties.replace("\"{", "{").replace("}\"", "}").replace("|","").trim()
+    val equipment = firstAcqCarD.equipment.replace("\"[", "[").replace("]\"", "]").replace("|","").trim()
+    //    val properties = getMapFromJsonMap(firstAcqCarD.properties.replace("\"{", "{").replace("}\"", "}").replace("|",""))
+//    val equipment = getSetFromJsonArray(firstAcqCarD.equipment.replace("\"[", "[").replace("]\"", "]").replace("|",""))
+    val information = firstAcqCarD.information.replace("|","").trim()
     val sold = carMarkedAsSold(price)
     val deleted = false //TODO:How to identify?
     val load_time = System.currentTimeMillis()
@@ -403,6 +468,16 @@ object Utility {
     Try {s.toDouble}.toOption
   }
 
+  def writeToJsonFile(df:DataFrame, path:String)={
+    val array = df.toJSON.collect
+    var jsonStringCombined = "["
+
+    for ( i <- 0 to array.length-1){
+      jsonStringCombined += array(i) + ","
+    }
+    val validJsonString = jsonStringCombined.substring(0, jsonStringCombined.length()-1) + "]"
+    File(path).writeAll(validJsonString)
+  }
 
   def printCurrentMethodName() : Unit = println(Thread.currentThread.getStackTrace()(2).getMethodName)
 
@@ -413,7 +488,7 @@ object Utility {
     val EmptyInt = -1
     val EmptyDate = "1900-01-01"
     val EmptyUtilDate = new java.sql.Date(1900,1,1)
-    val ETLSafetyMargin = 7 //days
-    val ETLFirstLoadDate = LocalDate.of(2016,7,1)
+    //val ETLSafetyMargin = 7 //days
+    //val ETLFirstLoadDate = LocalDate.of(2016,7,1)
   }
 }
