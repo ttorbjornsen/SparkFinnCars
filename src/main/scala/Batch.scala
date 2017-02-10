@@ -19,16 +19,16 @@ object Batch extends App {
   val conf = new SparkConf().
     setAppName("loadRaw").
     setMaster("local[*]").
-    //set("spark.cassandra.connection.host", "finncars-cassandra")
-    set("spark.cassandra.connection.host", "172.20.0.4") //scala repl test
+    set("spark.cassandra.connection.host", "finncars-cassandra")
+    //set("spark.cassandra.connection.host", "172.20.0.4") //scala repl test
 
   //  val sc = new SparkContext(conf)
   val spark = SparkSession.
     builder().
     appName("BatchApp").
     master("local[*]").
-//    config("spark.cassandra.connection.host", "finncars-cassandra").
-        config("spark.cassandra.connection.host","172.20.0.2"). //scala repl test
+    config("spark.cassandra.connection.host", "finncars-cassandra").
+    //config("spark.cassandra.connection.host","172.20.0.2"). //scala repl test
     getOrCreate()
 
   import spark.implicits._ //e.g. convert from data frame to dataset
@@ -140,7 +140,7 @@ object Batch extends App {
       load().
       select("finnkode").
       distinct().
-      limit(500).
+//      limit(500).
       collect
 
     println(deltaFinnkode.length + " finnkodes has been logged at some point. Calculate Btl. ")

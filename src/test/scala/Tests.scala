@@ -1,29 +1,22 @@
 package ttorbjornsen.finncars
 
-import java.time.LocalDate
-import java.util.HashMap
-
+import org.apache.spark
+import org.apache.spark.SparkConf
 
 import scala.collection.immutable.Map
 import java.time.{Instant, LocalDate, LocalTime}
-import java.util.HashMap
-import scala.concurrent.duration._
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.JavaConversions._
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.cassandra._
 import org.apache.spark.sql._
-import com.datastax.spark.connector._
 
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.{Await, Promise}
 import scala.util.{Failure, Success}
 
-import org.apache.spark.rdd.RDD
+//import ttorbjornsen.finncars.Utility //import this in REPL, otherwise not necessary since in same package
 import org.scalatest.{FunSpec, Matchers}
-
-
+import org.apache.spark.{SparkContext, SparkConf}
+//import ttorbjornsen.finncars.PropCar //import this in REPL, otherwise not necessary since in same package
+//import ttorbjornsen.finncars.BtlCar //import this in REPL, otherwise not necessary since in same package
 
 
 
@@ -32,8 +25,20 @@ import org.scalatest.{FunSpec, Matchers}
   */
 class Tests extends FunSpec with Matchers with SparkSqlSpec {
 
+  val cassandraDockerIp = "172.20.0.4"
+
   override def beforeAll(): Unit = {
     super.beforeAll()
+    val conf = new SparkConf().setAppName("loadRaw").setMaster("local[*]").set("spark.cassandra.connection.host",cassandraDockerIp)
+    val spark = SparkSession.
+      builder().
+      appName("BatchApp").
+      master("local[*]").
+      config("spark.cassandra.connection.host", cassandraDockerIp).
+      getOrCreate()
+
+    import spark.implicits._ //e.g. convert from data frame to dataset
+
 
 //    val dfRandomCarHeader = _csc.read.
 //      format("org.apache.spark.sql.cassandra").
@@ -62,6 +67,7 @@ class Tests extends FunSpec with Matchers with SparkSqlSpec {
     }
 
     it("must create propcar from acqCarHeader and acqCarDetails"){
+
 //      case class AcqCarHeader(finnkode:Int= Utility.Constants.EmptyInt, load_date:Long = Utility.Constants.EmptyInt, load_time:Long= Utility.Constants.EmptyInt, title:String= Utility.Constants.EmptyString, location:String= Utility.Constants.EmptyString, year: String= Utility.Constants.EmptyString, km: String= Utility.Constants.EmptyString, price: String= Utility.Constants.EmptyString, url:String=Utility.Constants.EmptyString)
 //      val acqCarH = spark.createDataset(Seq(
 //        AcqCarHeader(24176155,1483488000,1483566705,"Audi A6 2.4 Auto/Tiptronic+cruisecontrol","Kolbotn","2003","130 000 km","99 500,-","http://m.finn.no/car/used/ad.html?finnkode=24176155"),
@@ -81,45 +87,63 @@ class Tests extends FunSpec with Matchers with SparkSqlSpec {
 //      import spark.implicits._
 //      propCarDF.map(temp => println(temp))
 
-
-
-
     }
+    it("must create btlcar from propcar"){
+      val finnkode = 89690927
 
-    it("temp - dataset conversion"){
-      //TEMP TO TRY OUT DATASET
       val spark = SparkSession.
         builder().
-        appName("Spark SQL basic example").
+        appName("BatchApp").
         master("local[*]").
-        config("spark.some.config.option", "some-value").
+        config("spark.cassandra.connection.host", cassandraDockerIp).
         getOrCreate()
-      import spark.implicits._
 
-      object Utility {
-        object Constants {
-        val EmptyMap = new java.util.HashMap[String,String](Map("NULL" -> "NULL"))
-        val EmptyList = Set("NULL")
-        val EmptyString = "NULL"
-        val EmptyInt = -1
-        val EmptyDate = "1900-01-01"
-        val EmptyUtilDate = new java.sql.Date(1900,1,1)
-        val ETLSafetyMargin = 7 //days
-        val ETLFirstLoadDate = LocalDate.of(2016,7,1)
-      }
-    }
-//      case class AcqCarDetails(finnkode:Int= Utility.Constants.EmptyInt, load_date:java.sql.Date= Utility.Constants.EmptyUtilDate, load_time:Long= Utility.Constants.EmptyInt, properties:String= Utility.Constants.EmptyString, equipment:String= Utility.Constants.EmptyString, information:String= Utility.Constants.EmptyString, deleted:Boolean=false, url:String=Utility.Constants.EmptyString)
-//      case class PropCar(finnkode:Int = Utility.Constants.EmptyInt, load_date:java.sql.Date= Utility.Constants.EmptyUtilDate, title:String= Utility.Constants.EmptyString, location:String= Utility.Constants.EmptyString, year: Int= Utility.Constants.EmptyInt, km: Int= Utility.Constants.EmptyInt, price: Int= Utility.Constants.EmptyInt, properties:java.util.HashMap[String,String]= Utility.Constants.EmptyMap, equipment:Set[String]= Utility.Constants.EmptyList, information:String= Utility.Constants.EmptyString, sold:Boolean=false, deleted:Boolean=false, load_time:Long = Utility.Constants.EmptyInt, url:String=Utility.Constants.EmptyString)
+      import spark.implicits._ //e.g. convert from data frame to dataset
+
+      val propCarFinnkodeArray = spark.read.
+        format("org.apache.spark.sql.cassandra").
+        options(Map("table" -> "prop_car_daily", "keyspace" -> "finncars")).
+        load.
+        filter("finnkode = " + finnkode).
+        orderBy("load_date").
+        as[PropCar].
+        collect
+
+      propCarFinnkodeArray.map(car => println(car.load_date))
+
+      val btlCar1 = Utility.createBtlCar(propCarFinnkodeArray)
+      btlCar1.sold should equal(true)
+      btlCar1.lead_time_sold should equal(2)
+
+
+//      val buf = scala.collection.mutable.ListBuffer.empty[BtlCar]
+//      buf += btlCar1
 //
-//      val seq = Seq(AcqCarDetails(properties = "{temp:2}))"))
-//      implicit val propCarEncoder = org.apache.spark.sql.Encoders.kryo[PropCar]
-//      val seq2 = Seq(PropCar(properties = new java.util.HashMap(Map("test" -> "test"))))
-//      val seq3 = sqlCtx.createDataFrame(seq2)
-//      val d = spark.createDataset(seq2)
-//      d.first.properties
+//      val tempDS = buf.filter(_ != BtlCar()).toSeq.toDS()
+//      tempDS.write.
+//        format("org.apache.spark.sql.cassandra").
+//        options(Map("table" -> "btl_car", "keyspace" -> "finncars")).
+//        mode(SaveMode.Append).save()
+//
+//      val temp = spark.read.
+//        format("org.apache.spark.sql.cassandra").
+//        options(Map("table" -> "btl_car", "keyspace" -> "finncars")).
+//        load.
+//        filter("finnkode = " + finnkode).
+//        as[BtlCar].
+//        collect
+//
+//      temp(0).last_updated
 
+
+      //propCarsDF.show
 
     }
+
+
+
+
+
 
 
   }

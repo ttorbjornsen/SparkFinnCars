@@ -18,7 +18,7 @@ import ttorbjornsen.finncars.{BtlCar, Utility, PropCar}
   * Created by torbjorn on 12.01.17.
   */
 object Export extends App{
-  val cassandraDockerIp = "172.20.0.2"
+//  val cassandraDockerIp = "172.20.0.2"
 //  val conf = new SparkConf().setAppName("loadRaw").setMaster("local[*]").set("spark.cassandra.connection.host",cassandraDockerIp)
 
   val conf = new SparkConf().setAppName("loadRaw").setMaster("local[*]").set("spark.cassandra.connection.host","finncars-cassandra")
@@ -27,7 +27,7 @@ object Export extends App{
     builder().
     appName("BatchApp").
     master("local[*]").
-    config("spark.cassandra.connection.host",cassandraDockerIp).
+    config("spark.cassandra.connection.host","finncars-cassandra").
     getOrCreate()
 
   spark.sparkContext.setLogLevel("WARN")

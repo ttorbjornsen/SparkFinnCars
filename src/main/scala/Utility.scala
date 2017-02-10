@@ -187,8 +187,34 @@ object Utility {
     Json.parse(jsonString).as[String]
   }
 
+  def getFirstPrice(cars:AnyRef):Int = {
+      cars match {
+        case x:Array[PropCar] => x.find(_.price != "Solgt").getOrElse(PropCar(price = "-1")).price.toInt //assumes propcar is sorted asc by date
+        case _ => Utility.Constants.EmptyInt
+      }
+  }
+
+  def getLastPrice(cars:AnyRef):Int = {
+    cars match {
+      case x:Array[PropCar] => x.reverse.find(_.price != "Solgt").getOrElse(PropCar(price = "-1")).price.toInt //assumes propcar is sorted asc by date
+      case _ => Utility.Constants.EmptyInt
+    }
+  }
+
+  def getSoldDate(cars:AnyRef):Long= {
+    cars match {
+      case x:Array[PropCar] => x.find(_.price == "Solgt").getOrElse(PropCar()).load_date//assumes propcar is sorted asc by date
+      case _ => Utility.Constants.EmptyInt
+    }
+  }
+
+
+
+
+
+
   def createBtlCar(propCarFinnkodeArray:Array[PropCar]): BtlCar = {
-    val firstRecord = propCarFinnkodeArray(0)
+    val firstRecord = propCarFinnkodeArray(0) //assuming the array is ordered by load date asc
     val lastRecord = propCarFinnkodeArray(propCarFinnkodeArray.length - 1)
     val finnkode = lastRecord.finnkode
     val url = lastRecord.url
@@ -197,18 +223,20 @@ object Utility {
     val year = lastRecord.year
     val km = lastRecord.km
 
-    val firstPrice = propCarFinnkodeArray.find(_.price != "Solgt").getOrElse(PropCar(price = "-1")).price.toInt
-    val lastPrice = propCarFinnkodeArray.find(_.price != "Solgt").getOrElse(PropCar(price = "-1")).price.toInt
+    val firstPrice = getFirstPrice(propCarFinnkodeArray)
+    val lastPrice = getLastPrice(propCarFinnkodeArray)
     val deltaPrice = lastPrice - firstPrice
 
     val sold = lastRecord.sold
-    val soldDate = propCarFinnkodeArray.find(_.price == "Solgt").getOrElse(PropCar()).load_date
+    val soldDate = getSoldDate(propCarFinnkodeArray)
+    //val soldDate = 1485561600
     val soldDateLocalDate = Instant.ofEpochSecond(soldDate).atZone(ZoneId.systemDefault()).toLocalDate()
 
     //val soldDate = 1484092800+86600 //temp
     val soldDateString = soldDate.toString
     val firstLoadDate = firstRecord.load_date
     val firstLoadDateLocalDate = Instant.ofEpochSecond(firstLoadDate).atZone(ZoneId.systemDefault()).toLocalDate()
+
 
     val lastLoadDate = lastRecord.load_date
     val leadTimeSold = if (soldDate > 0) {
@@ -232,9 +260,10 @@ object Utility {
     val sportsseter = Utility.hasSportsseter(lastEquipmentSet)
     val tilstandsrapport = Utility.hasTilstandsrapport(lastPropertiesMap)
     val vekt = Utility.getVekt(lastPropertiesMap)
+    val lastUpdatedString = LocalDate.now().toString
 
     BtlCar(finnkode = finnkode, title = title, location = location, year = year, km = km, price_first = firstPrice, price_last = lastPrice,
-      price_delta = deltaPrice, sold = sold, sold_date = soldDateString, lead_time_sold = leadTimeSold, load_date_first = firstLoadDate, load_date_latest = lastLoadDate,
+      price_delta = deltaPrice, sold = sold, sold_date = soldDateString, last_updated = lastUpdatedString, lead_time_sold = leadTimeSold, load_date_first = firstLoadDate, load_date_latest = lastLoadDate,
       automatgir = automatgir, drivstoff = drivstoff, hengerfeste = hengerfeste, skinninterior = skinninterior, effekt = effekt, regnsensor = regnsensor, farge = farge,
       cruisekontroll = cruisekontroll, parkeringsensor = parkeringsensor, antall_eiere = antallEiere, xenon = xenon, navigasjon = navigasjon,
       servicehefte = servicehefte, sportsseter = sportsseter, tilstandsrapport = tilstandsrapport, url = url,vekt = vekt)
