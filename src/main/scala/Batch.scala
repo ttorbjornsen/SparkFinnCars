@@ -185,7 +185,7 @@ object Batch extends App {
         setInt("price_last", btlCar.price_last).
         setInt("price_delta", btlCar.price_delta).
         setBool("sold", btlCar.sold).
-        setString("sold_date", btlCar.sold_date).
+        setTimestamp("sold_date", new java.util.Date(btlCar.sold_date)).
         setInt("lead_time_sold", btlCar.lead_time_sold).
         setBool("deleted", btlCar.deleted).
         setString("deleted_date", btlCar.deleted_date).
@@ -213,7 +213,6 @@ object Batch extends App {
         setInt("vekt", btlCar.vekt).
         setString("last_updated", btlCar.last_updated).
         setString("url", btlCar.url)
-
         session.execute(boundStmt)
 
 

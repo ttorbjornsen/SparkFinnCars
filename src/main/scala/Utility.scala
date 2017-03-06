@@ -26,7 +26,7 @@ import scala.util.{Failure, Success, Try}
 case class AcqCarHeader(finnkode:Int= Utility.Constants.EmptyInt, load_date:Long = Utility.Constants.EmptyInt, load_time:Long= Utility.Constants.EmptyInt, title:String= Utility.Constants.EmptyString, location:String= Utility.Constants.EmptyString, year: String= Utility.Constants.EmptyString, km: String= Utility.Constants.EmptyString, price: String= Utility.Constants.EmptyString, url:String=Utility.Constants.EmptyString)
 case class AcqCarDetails(finnkode:Int= Utility.Constants.EmptyInt, load_date:Long= Utility.Constants.EmptyInt, load_time:Long= Utility.Constants.EmptyInt, properties:String= Utility.Constants.EmptyString, equipment:String= Utility.Constants.EmptyString, information:String= Utility.Constants.EmptyString, deleted:Boolean=false, url:String=Utility.Constants.EmptyString)
 case class PropCar(finnkode:Int = Utility.Constants.EmptyInt, load_date:Long= Utility.Constants.EmptyInt, title:String= Utility.Constants.EmptyString, location:String= Utility.Constants.EmptyString, year: Int= Utility.Constants.EmptyInt, km: Int= Utility.Constants.EmptyInt, price: String= Utility.Constants.EmptyString, properties:String= Utility.Constants.EmptyString, equipment:String= Utility.Constants.EmptyString, information:String= Utility.Constants.EmptyString, sold:Boolean=false, deleted:Boolean=false, load_time:Long = Utility.Constants.EmptyInt, url:String=Utility.Constants.EmptyString)
-case class BtlCar(finnkode:Int = Utility.Constants.EmptyInt,title:String = Utility.Constants.EmptyString,location:String = Utility.Constants.EmptyString,year:Int = Utility.Constants.EmptyInt,km:Int = Utility.Constants.EmptyInt,price_first:Int = Utility.Constants.EmptyInt,price_last:Int = Utility.Constants.EmptyInt,price_delta:Int = Utility.Constants.EmptyInt,sold:Boolean = false,sold_date:String = Utility.Constants.EmptyDate,lead_time_sold:Int = Utility.Constants.EmptyInt,deleted:Boolean = false,deleted_date:String = Utility.Constants.EmptyDate,lead_time_deleted:Int = Utility.Constants.EmptyInt,load_date_first:Long = Utility.Constants.EmptyInt,load_date_latest:Long = Utility.Constants.EmptyInt,automatgir:Boolean = false,hengerfeste:Boolean = false,skinninterior:String = Utility.Constants.EmptyString,drivstoff:String = Utility.Constants.EmptyString,sylindervolum:Double = Utility.Constants.EmptyInt,effekt:Int = Utility.Constants.EmptyInt,regnsensor:Boolean = false,farge:String = Utility.Constants.EmptyString,cruisekontroll:Boolean = false,parkeringsensor:Boolean = false,antall_eiere:Int = Utility.Constants.EmptyInt,kommune:String = Utility.Constants.EmptyString,fylke:String = Utility.Constants.EmptyString,xenon:Boolean = false,navigasjon:Boolean = false,servicehefte:Boolean = false,sportsseter:Boolean= false,tilstandsrapport:Boolean = false,vekt:Int = Utility.Constants.EmptyInt, last_updated:String = Utility.Constants.EmptyDate, url:String=Utility.Constants.EmptyString)
+case class BtlCar(finnkode:Int = Utility.Constants.EmptyInt,title:String = Utility.Constants.EmptyString,location:String = Utility.Constants.EmptyString,year:Int = Utility.Constants.EmptyInt,km:Int = Utility.Constants.EmptyInt,price_first:Int = Utility.Constants.EmptyInt,price_last:Int = Utility.Constants.EmptyInt,price_delta:Int = Utility.Constants.EmptyInt,sold:Boolean = false,sold_date:Long = Utility.Constants.EmptyInt,lead_time_sold:Int = Utility.Constants.EmptyInt,deleted:Boolean = false,deleted_date:String = Utility.Constants.EmptyDate,lead_time_deleted:Int = Utility.Constants.EmptyInt,load_date_first:Long = Utility.Constants.EmptyInt,load_date_latest:Long = Utility.Constants.EmptyInt,automatgir:Boolean = false,hengerfeste:Boolean = false,skinninterior:String = Utility.Constants.EmptyString,drivstoff:String = Utility.Constants.EmptyString,sylindervolum:Double = Utility.Constants.EmptyInt,effekt:Int = Utility.Constants.EmptyInt,regnsensor:Boolean = false,farge:String = Utility.Constants.EmptyString,cruisekontroll:Boolean = false,parkeringsensor:Boolean = false,antall_eiere:Int = Utility.Constants.EmptyInt,kommune:String = Utility.Constants.EmptyString,fylke:String = Utility.Constants.EmptyString,xenon:Boolean = false,navigasjon:Boolean = false,servicehefte:Boolean = false,sportsseter:Boolean= false,tilstandsrapport:Boolean = false,vekt:Int = Utility.Constants.EmptyInt, last_updated:String = Utility.Constants.EmptyDate, url:String=Utility.Constants.EmptyString)
 case class LastSuccessfulLoad(table_name:String, load_date:Long)
 case class LoadDate(load_date:Long)
 
@@ -232,12 +232,12 @@ object Utility {
     val deltaPrice = lastPrice - firstPrice
 
     val sold = lastRecord.sold
-    val soldDate = getSoldDate(propCarFinnkodeArray)
+    val soldDate = getSoldDate(propCarFinnkodeArray)*1000
     //val soldDate = 1485561600
     val soldDateLocalDate = Instant.ofEpochSecond(soldDate).atZone(ZoneId.systemDefault()).toLocalDate()
 
     //val soldDate = 1484092800+86600 //temp
-    val soldDateString = soldDate.toString
+    //val soldDateString = soldDate.toString
     val firstLoadDate = firstRecord.load_date*1000
     val firstLoadDateLocalDate = Instant.ofEpochSecond(firstLoadDate).atZone(ZoneId.systemDefault()).toLocalDate()
 
@@ -262,15 +262,16 @@ object Utility {
     val navigasjon = Utility.hasNavigasjon(lastEquipmentSet)
     val servicehefte = Utility.hasServicehefte(lastRecord.information)
     val sportsseter = Utility.hasSportsseter(lastEquipmentSet)
+    val sylindervolum = Utility.getSylindervolum(lastPropertiesMap)
     val tilstandsrapport = Utility.hasTilstandsrapport(lastPropertiesMap)
     val vekt = Utility.getVekt(lastPropertiesMap)
     val lastUpdatedString = LocalDate.now().toString
 
     BtlCar(finnkode = finnkode, title = title, location = location, year = year, km = km, price_first = firstPrice, price_last = lastPrice,
-      price_delta = deltaPrice, sold = sold, sold_date = soldDateString, last_updated = lastUpdatedString, lead_time_sold = leadTimeSold, load_date_first = firstLoadDate, load_date_latest = lastLoadDate,
+      price_delta = deltaPrice, sold = sold, sold_date = soldDate, last_updated = lastUpdatedString, lead_time_sold = leadTimeSold, load_date_first = firstLoadDate, load_date_latest = lastLoadDate,
       automatgir = automatgir, drivstoff = drivstoff, hengerfeste = hengerfeste, skinninterior = skinninterior, effekt = effekt, regnsensor = regnsensor, farge = farge,
       cruisekontroll = cruisekontroll, parkeringsensor = parkeringsensor, antall_eiere = antallEiere, xenon = xenon, navigasjon = navigasjon,
-      servicehefte = servicehefte, sportsseter = sportsseter, tilstandsrapport = tilstandsrapport, url = url,vekt = vekt)
+      servicehefte = servicehefte, sportsseter = sportsseter, sylindervolum=sylindervolum, tilstandsrapport = tilstandsrapport, url = url,vekt = vekt)
 
   }
 

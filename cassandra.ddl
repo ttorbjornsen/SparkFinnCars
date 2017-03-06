@@ -119,7 +119,7 @@ CREATE TABLE finncars.prop_car_daily (
     servicehefte boolean,
     skinninterior text,
     sold boolean,
-    sold_date text,
+    sold_date timestamp,
     sportsseter boolean,
     sylindervolum double,
     tilstandsrapport boolean,
