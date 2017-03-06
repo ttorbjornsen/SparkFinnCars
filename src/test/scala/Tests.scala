@@ -25,16 +25,17 @@ import org.apache.spark.{SparkContext, SparkConf}
   */
 class Tests extends FunSpec with Matchers with SparkSqlSpec {
 
-  val cassandraDockerIp = "172.20.0.4"
+  val cassandraDockerIp = "172.20.0.5"
 
   override def beforeAll(): Unit = {
     super.beforeAll()
-    val conf = new SparkConf().setAppName("loadRaw").setMaster("local[*]").set("spark.cassandra.connection.host",cassandraDockerIp)
+    val conf = new SparkConf().setAppName("loadRaw").setMaster("local[*]")//.set("spark.cassandra.connection.host","finncars-cassandra")
     val spark = SparkSession.
       builder().
+      config(conf).
       appName("BatchApp").
-      master("local[*]").
-      config("spark.cassandra.connection.host", cassandraDockerIp).
+//      master("local[*]").
+//      config("spark.cassandra.connection.host", "finncars-cassandra").
       getOrCreate()
 
     import spark.implicits._ //e.g. convert from data frame to dataset

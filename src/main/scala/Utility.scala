@@ -1,4 +1,6 @@
 package ttorbjornsen.finncars
+
+import java.sql.Timestamp
 import java.time.{Instant, ZoneId, LocalDate}
 import java.time.temporal.ChronoUnit
 import java.util.{Calendar, HashMap}
@@ -6,7 +8,7 @@ import java.util.{Calendar, HashMap}
 import com.datastax.spark.connector.cql.CassandraConnector
 import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{DataFrame, Dataset}
+import org.apache.spark.sql.{Row, SparkSession, DataFrame, Dataset}
 import org.jsoup.Jsoup
 import org.jsoup.nodes._
 import play.api.libs.json._
@@ -16,7 +18,8 @@ import scala.collection.JavaConversions._
 import scala.collection.immutable.Map
 import scala.collection.mutable.ListBuffer
 import scala.io.Source
-import scala.reflect.io.File
+import java.io.{Serializable, PrintWriter, File}
+//import scala.reflect.io.File
 import scala.util.{Failure, Success, Try}
 
 
@@ -25,6 +28,7 @@ case class AcqCarDetails(finnkode:Int= Utility.Constants.EmptyInt, load_date:Lon
 case class PropCar(finnkode:Int = Utility.Constants.EmptyInt, load_date:Long= Utility.Constants.EmptyInt, title:String= Utility.Constants.EmptyString, location:String= Utility.Constants.EmptyString, year: Int= Utility.Constants.EmptyInt, km: Int= Utility.Constants.EmptyInt, price: String= Utility.Constants.EmptyString, properties:String= Utility.Constants.EmptyString, equipment:String= Utility.Constants.EmptyString, information:String= Utility.Constants.EmptyString, sold:Boolean=false, deleted:Boolean=false, load_time:Long = Utility.Constants.EmptyInt, url:String=Utility.Constants.EmptyString)
 case class BtlCar(finnkode:Int = Utility.Constants.EmptyInt,title:String = Utility.Constants.EmptyString,location:String = Utility.Constants.EmptyString,year:Int = Utility.Constants.EmptyInt,km:Int = Utility.Constants.EmptyInt,price_first:Int = Utility.Constants.EmptyInt,price_last:Int = Utility.Constants.EmptyInt,price_delta:Int = Utility.Constants.EmptyInt,sold:Boolean = false,sold_date:String = Utility.Constants.EmptyDate,lead_time_sold:Int = Utility.Constants.EmptyInt,deleted:Boolean = false,deleted_date:String = Utility.Constants.EmptyDate,lead_time_deleted:Int = Utility.Constants.EmptyInt,load_date_first:Long = Utility.Constants.EmptyInt,load_date_latest:Long = Utility.Constants.EmptyInt,automatgir:Boolean = false,hengerfeste:Boolean = false,skinninterior:String = Utility.Constants.EmptyString,drivstoff:String = Utility.Constants.EmptyString,sylindervolum:Double = Utility.Constants.EmptyInt,effekt:Int = Utility.Constants.EmptyInt,regnsensor:Boolean = false,farge:String = Utility.Constants.EmptyString,cruisekontroll:Boolean = false,parkeringsensor:Boolean = false,antall_eiere:Int = Utility.Constants.EmptyInt,kommune:String = Utility.Constants.EmptyString,fylke:String = Utility.Constants.EmptyString,xenon:Boolean = false,navigasjon:Boolean = false,servicehefte:Boolean = false,sportsseter:Boolean= false,tilstandsrapport:Boolean = false,vekt:Int = Utility.Constants.EmptyInt, last_updated:String = Utility.Constants.EmptyDate, url:String=Utility.Constants.EmptyString)
 case class LastSuccessfulLoad(table_name:String, load_date:Long)
+case class LoadDate(load_date:Long)
 
 
 /**
@@ -234,11 +238,11 @@ object Utility {
 
     //val soldDate = 1484092800+86600 //temp
     val soldDateString = soldDate.toString
-    val firstLoadDate = firstRecord.load_date
+    val firstLoadDate = firstRecord.load_date*1000
     val firstLoadDateLocalDate = Instant.ofEpochSecond(firstLoadDate).atZone(ZoneId.systemDefault()).toLocalDate()
 
 
-    val lastLoadDate = lastRecord.load_date
+    val lastLoadDate = lastRecord.load_date*1000
     val leadTimeSold = if (soldDate > 0) {
       ChronoUnit.DAYS.between(firstLoadDateLocalDate,soldDateLocalDate).toInt
     } else Utility.Constants.EmptyInt
@@ -496,16 +500,62 @@ object Utility {
   def parseDouble(s:String): Option[Double] = {
     Try {s.toDouble}.toOption
   }
+  def exportDataFrameAll(spark:SparkSession, df:DataFrame, pathWOFileExt:String): Unit = {
+    println("starting writing " + pathWOFileExt + ".json")
+
+    Utility.writeToJsonFile(df, pathWOFileExt + ".json")
+    println("finishedwriting " + pathWOFileExt + ".json")
+  }
+
+  def exportDataFrameLoadDates(spark:SparkSession, df:DataFrame, pathWOFileExt:String): Unit = {
+    //print one file for each load date
+    //val df = acqCarDetailsDF
+
+//    val loadDateRange = df.select(to_date(min("load_date")) as("load_date_min"), to_date(max("load_date")).as("load_date_max")).collect
+//    val loadDateMax  = loadDateRange(0)(1).asInstanceOf[java.sql.Date].toLocalDate
+//    val loadDateMin  = loadDateRange(0)(0).asInstanceOf[java.sql.Date].toLocalDate
+//    val loadDateRangeDays = loadDateMax.toEpochDay - loadDateMin.toEpochDay
+
+    val loadDateRange = df.select(min("load_date") as("load_date_min"), max("load_date")).as("load_date_max").collect
+    val loadDateMax  = loadDateRange(0)(1).asInstanceOf[java.sql.Timestamp]
+    val loadDateMin  = loadDateRange(0)(0).asInstanceOf[java.sql.Timestamp]
+    val loadDateRangeDays = (loadDateMax.getTime() - loadDateMin.getTime())/86400000
+
+    var loadDateList = scala.collection.mutable.ListBuffer[java.sql.Timestamp]()
+
+
+//    for (i <- 0 to 1){
+    for (i <- 0 to loadDateRangeDays.toInt){
+       loadDateList += new java.sql.Timestamp(loadDateMin.getTime()+(86400000.toLong*i))
+    }
+    println("starting writing " + pathWOFileExt + ".json")
+
+    loadDateList.map{ld =>
+      println(ld)
+      Utility.writeToJsonFile(df.where(df("load_date") === ld), pathWOFileExt + ld.toString().substring(0,10) + ".json")
+    }
+    println("finishedwriting " + pathWOFileExt + ".json")
+  }
+
+
 
   def writeToJsonFile(df:DataFrame, path:String)={
+    //val df = btlCarsDF
+    //val path = "/media/sf_finncars_inputfiles/btlcar/btlcars.json"
     val array = df.toJSON.collect
-    var jsonStringCombined = "["
+    if (array.length > 0) {
 
-    for ( i <- 0 to array.length-1){
-      jsonStringCombined += array(i) + ","
+      val pw = new PrintWriter(new File(path))
+      pw.write("[")
+      array.slice(0, array.length - 1).foreach { x =>
+        pw.write(x)
+        pw.write(",")
+      }
+      pw.write(array.slice(array.length - 1, array.length)(0))
+
+      pw.write("]")
+      pw.close()
     }
-    val validJsonString = jsonStringCombined.substring(0, jsonStringCombined.length()-1) + "]"
-    File(path).writeAll(validJsonString)
   }
 
   def printCurrentMethodName() : Unit = println(Thread.currentThread.getStackTrace()(2).getMethodName)
