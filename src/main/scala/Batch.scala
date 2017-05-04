@@ -15,7 +15,7 @@ import com.datastax.spark.connector.cql.CassandraConnector
   */
 object Batch extends App {
   TimeZone.setDefault(TimeZone.getTimeZone("UTC")) //Cassandra stores timestamps as UTC. Ensure that UTC is used when extracting data from Cassandra into Spark
-  val cassandraDockerIp = "172.20.0.5"
+  val cassandraDockerIp = "172.20.0.2"
   val conf = new SparkConf().
     setAppName("loadRaw").
     setMaster("local[*]").
@@ -215,7 +215,7 @@ object Batch extends App {
         setString("url", btlCar.url)
         session.execute(boundStmt)
 
-
+        session.execute("INSERT INTO finncars.last_successful_load(table_name,load_date) VALUES('btl_car', '" + load_date + "')")
     }
   }
 

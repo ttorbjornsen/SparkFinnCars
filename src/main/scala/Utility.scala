@@ -212,6 +212,19 @@ object Utility {
     }
   }
 
+//  def getDeltaPrices(cars:AnyRef):String={
+//    case x:Array[PropCar] => {
+//      var deltaPrices:String = ""
+//      var prevPrice:String = x(0).price
+//      for (arrayElem <- x ){
+//          if (arrayElem.price <>
+//        }
+//    }
+//    case _ => Utility.Constants.EmptyString
+//
+//    //assumes propcar is sorted asc by date
+//  }
+
 
 
 
@@ -232,13 +245,13 @@ object Utility {
     val deltaPrice = lastPrice - firstPrice
 
     val sold = lastRecord.sold
-    val soldDate = getSoldDate(propCarFinnkodeArray)*1000
+    val soldDate = getSoldDate(propCarFinnkodeArray)
     //val soldDate = 1485561600
     val soldDateLocalDate = Instant.ofEpochSecond(soldDate).atZone(ZoneId.systemDefault()).toLocalDate()
 
     //val soldDate = 1484092800+86600 //temp
     //val soldDateString = soldDate.toString
-    val firstLoadDate = firstRecord.load_date*1000
+    val firstLoadDate = firstRecord.load_date
     val firstLoadDateLocalDate = Instant.ofEpochSecond(firstLoadDate).atZone(ZoneId.systemDefault()).toLocalDate()
 
 
@@ -451,7 +464,6 @@ object Utility {
 
   def createPropCar(acqCarH:Dataset[AcqCarHeader], acqCarD:Dataset[AcqCarDetails]):PropCar = {
     val firstAcqCarH = acqCarH.orderBy(desc("load_date")).first
-    val firstAcqCarD = acqCarD.orderBy(desc("load_date")).first
     val finnkode = firstAcqCarH.finnkode
     val load_date = firstAcqCarH.load_date*1000
     val title = firstAcqCarH.title.replace("|","")
@@ -459,11 +471,18 @@ object Utility {
     val year = parseYear(firstAcqCarH.year)
     val km = parseKM(firstAcqCarH.km)
     val price = parsePrice(firstAcqCarH.price)
-    val properties = firstAcqCarD.properties.replace("\"{", "{").replace("}\"", "}").replace("|","").trim()
-    val equipment = firstAcqCarD.equipment.replace("\"[", "[").replace("]\"", "]").replace("|","").trim()
-    //    val properties = getMapFromJsonMap(firstAcqCarD.properties.replace("\"{", "{").replace("}\"", "}").replace("|",""))
-//    val equipment = getSetFromJsonArray(firstAcqCarD.equipment.replace("\"[", "[").replace("]\"", "]").replace("|",""))
-    val information = firstAcqCarD.information.replace("|","").trim()
+
+    //should be set as val and check for empty
+    var properties = Utility.Constants.EmptyString
+    var equipment = Utility.Constants.EmptyString
+    var information = Utility.Constants.EmptyString
+    if (acqCarD.count > 0) {
+      val firstAcqCarD = acqCarD.orderBy(desc("load_date")).first
+      val properties = firstAcqCarD.properties.replace("\"{", "{").replace("}\"", "}").replace("|", "").trim()
+      val equipment = firstAcqCarD.equipment.replace("\"[", "[").replace("]\"", "]").replace("|", "").trim()
+      val information = firstAcqCarD.information.replace("|", "").trim()
+    }
+
     val sold = carMarkedAsSold(price)
     val deleted = false //TODO:How to identify?
     val load_time = System.currentTimeMillis()
